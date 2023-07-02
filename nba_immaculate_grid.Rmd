@@ -184,7 +184,7 @@ answers <- function(team_1, team_2) {
 
 ```{r game runner}
 play <- function(replay = FALSE) {
-  grid <- game_grid() # TODO: add replay option
+  grid <- if (replay) last_grid else game_grid()
   last_grid <<- grid
   correct_guesses <- 0
   guesses_left <- 9
