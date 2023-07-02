@@ -1,0 +1,232 @@
+---
+title: "NBA Immaculate Grid"
+author: Max Feinleib
+date: "June 2023"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r libraries, message=FALSE}
+# libraries used
+library(dplyr)
+library(readr)
+library(stringr)
+library(piecemaker)
+library(rvest)
+```
+
+**Data Credit:** Data from Basketball Reference, 2023.
+
+## Data structure:
+* Rows: players
+* Columns: teams, achievements (awards, career stats, rings)
+
+## Game model:
+* pick 6 columns (ensure there are matches for all)
+* display (A-C) x (1-3) grid
+* guess a position and a player
+* distinguish identically named players by years
+* 9 guesses
+
+## Functions
+
+```{r data import}
+import_team <- function(abbr) {
+  teams[[tolower(abbr)]] <<- read_csv(paste0("data/teams/", abbr, ".csv"), 
+                                      show_col_types = FALSE) %>% 
+    mutate("{abbr}" := TRUE)
+}
+
+import_teams <- function(abbrs) {
+  teams <<- list()
+  lapply(abbrs, import_team)
+}
+```
+
+```{r create player grid}
+add_team_players <- function(team_df) {
+  player_df <<- player_df %>% 
+    full_join(team_df, 
+              by = c("PlayerId", "Player"), relationship = "one-to-one") %>% 
+    mutate(start_year = min(start_year, From, na.rm = TRUE),
+           end_year = max(end_year, To, na.rm = TRUE),
+           .keep = "unused",
+           .after = "PlayerId")
+  
+}
+
+add_all_players <- function() {
+  player_df <<- tibble(Player = character(),
+                         PlayerId = character(),
+                         start_year = numeric(),
+                         end_year = numeric()) %>% 
+    rowwise()
+  lapply(teams, add_team_players)
+  player_df <<- player_df %>% 
+    mutate(Player = remove_diacritics(Player),
+           start_year = start_year - 1) %>% 
+    arrange(PlayerId)
+}
+```
+
+
+## Build database
+
+```{r build database, results=FALSE}
+team_abbrs <- c("ATL", "BOS", "BRK", "CHA", "CHI", "CLE", 
+                "DAL", "DEN", "DET", "GSW", "HOU", "IND", 
+                "LAC", "LAL", "MEM", "MIA", "MIL", "MIN", 
+                "NOP", "NYK", "OKC", "ORL", "PHI", "PHO",
+                "POR", "SAC", "SAS", "TOR", "UTA", "WAS")
+import_teams(team_abbrs)
+add_all_players()
+player_df
+```
+
+```{r database views}
+# duplicate names
+duplicate_names <- player_df %>% 
+  group_by(Player) %>%
+  filter(n() > 1)
+```
+
+## Gameplay
+
+```{r grid generation functions}
+generate_teams <- function(n = 6) {
+  tms <- sample(team_abbrs, size = n)
+  # cat("\t", tms[1:3], "\n", tms[4], "\n", tms[5], "\n", tms[6], "\n")
+  return(tms)
+}
+
+game_grid <- function() {
+  tms <- generate_teams()
+  grid <- matrix(LETTERS[1:9], 
+                 nrow = 3, ncol = 3, byrow = TRUE,
+                 dimnames = list(tms[1:3], tms[4:6]))
+  return(grid)
+}
+```
+
+
+```{r I/O helpers}
+process_input <- function() {
+  input <- scan(what = character(),
+                nlines = 1,
+                sep = "\n",
+                quiet = TRUE)
+  
+  input <- strsplit(input, ", ")[[1]]
+  return(input)
+}
+
+grid_letter_to_loc <- function(grid, grid_letter) {
+  # find row, column
+  letter_num <- which(LETTERS == toupper(grid_letter))
+  grid_row <- (letter_num + 2) %/% 3
+  grid_col <- ((letter_num - 1) %% 3) + 1
+  
+  return(c(grid_row, grid_col))
+}
+
+guess_print <- function(grid, correct_guesses, guesses_left) {
+  cat("Score: ", correct_guesses, "\n",
+      "Guesses left: ", guesses_left, "\n\n",
+      sep = "")
+  print(grid)
+  cat("\n", 
+      "Enter a grid location and a player name, or type 'quit'.", "\n", 
+      "Ex: 'A, LeBron James'",
+      sep = "")
+}
+
+ending_print <- function(grid, correct_guesses) {
+  cat("Final Score:", correct_guesses, "\n")
+  if (correct_guesses == 9 ){
+    cat("IMMACULATE!\n")
+  }
+  cat("\nYour Grid:\n")
+  print(grid)
+}
+```
+
+
+```{r guessing functions}
+guess <- function(team_1, team_2, player) {
+  if (player %in% player_df$Player) {
+    return(nrow(filter(player_df, Player == player, 
+                       !!as.symbol(team_1), !!as.symbol(team_2))) 
+           > 0)
+  } else {
+    return("Player not found.")
+  }
+}
+
+guess_loc <- function(grid, grid_row, grid_col, player) {
+  # get grid teams
+  row_team <- rownames(grid)[grid_row]
+  col_team <- colnames(grid)[grid_col]
+  
+  guess(row_team, col_team, player)
+}
+
+# utility, not used in game
+answers <- function(team_1, team_2) {
+  player_df %>% 
+    filter(!!as.symbol(team_1), !!as.symbol(team_2)) %>% 
+    pull(Player)
+}
+```
+
+
+```{r game runner}
+play <- function(replay = FALSE) {
+  grid <- game_grid() # TODO: add replay option
+  last_grid <<- grid
+  correct_guesses <- 0
+  guesses_left <- 9
+  cat("* * * * * * * * [ NBA Immaculate Grid ] * * * * * * * *\n\n")
+  
+  while (guesses_left > 0) {
+    guess_print(grid, correct_guesses, guesses_left)
+    
+    input <- process_input()
+    if (length(input) == 1 && input == "quit") {
+      break
+    }
+    grid_letter <- input[1]
+    player <- input[2]
+    if (player %in% grid) {
+      cat(player, ": Already used.\n\n", sep = "")
+      next
+    }
+    
+    grid_loc <- grid_letter_to_loc(grid, grid_letter)
+    grid_row <- grid_loc[1]
+    grid_col <- grid_loc[2]
+    
+    guess_result <- guess_loc(grid, grid_row, grid_col, player)
+    if (!is.character(guess_result)) {
+      guesses_left <- guesses_left - 1
+      if (guess_result) {
+        correct_guesses <- correct_guesses + as.integer(guess_result)
+        grid[grid_row, grid_col] <- player
+      }
+    }
+    # print guess result
+    cat(player, ": ", 
+        # LHS has to be logical, RHS has to be character regardless of guess_result
+        case_when(is.character(guess_result) ~ as.character(guess_result), 
+                  guess_result == TRUE ~ "✅", 
+                  .default = "❌"), "\n\n", 
+        sep = "")
+  }
+  
+  # end-of-game printouts
+  ending_print(grid, correct_guesses)
+}
+```
+
