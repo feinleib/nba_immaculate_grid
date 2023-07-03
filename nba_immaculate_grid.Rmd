@@ -21,11 +21,11 @@ library(withr)
 
 **Data Credit:** Data from Basketball Reference, 2023.
 
-## Data structure:
+## Data structure
 * Rows: players
 * Columns: teams, achievements (awards, career stats, rings)
 
-## Game model:
+## Game model
 * pick 6 columns (ensure there are matches for all)
 * display (A-C) x (1-3) grid
 * guess a position and a player
