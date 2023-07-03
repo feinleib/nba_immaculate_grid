@@ -1,4 +1,6 @@
 # NBA Immaculate Grid
+By Max Feinleib, July 2023
+
 This game is an NBA version of [Immaculate Grid](https://www.immaculategrid.com/). For each spot in the grid, pick a player who’s played on both teams! (Awards and stat categories coming soon.)
 
 ## Getting started
