@@ -16,6 +16,7 @@ library(readr)
 library(stringr)
 library(piecemaker)
 library(rvest)
+library(withr)
 ```
 
 **Data Credit:** Data from Basketball Reference, 2023.
@@ -183,8 +184,15 @@ answers <- function(team_1, team_2) {
 
 
 ```{r game runner}
-play <- function(replay = FALSE) {
-  grid <- if (replay) last_grid else game_grid()
+play <- function(daily = TRUE, replay = FALSE) {
+  grid <- if (replay) {
+    last_grid 
+  } else if (daily) {
+    with_seed(Sys.Date(), game_grid())
+  } else {
+    game_grid()
+  }
+  
   last_grid <<- grid
   correct_guesses <- 0
   guesses_left <- 9
