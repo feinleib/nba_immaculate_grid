@@ -16,5 +16,8 @@ This game is an NBA version of [Immaculate Grid](https://www.immaculategrid.com/
 4. You can quit the game early by typing `quit`.
 
 ## More tips
-1. **See answers:** When you’re not in the middle of the game, you can see all the answers for a pair of teams by entering `answers(“team1”, “team2”)`. (Example: `answers(“BOS”, “NYK”)`)
-2. **Replay mode:** To play again with your last grid, enter `play(replay = TRUE)`.
+1. **Game modes:**
+  - **Daily:** This is the default game mode. Entering `play()` gives you today's game.
+  - **Random:** To play on a random game grid, enter `play(daily = FALSE)`, or simply `play(FALSE)`.
+  - **Replay:** You can replay your last game grid by entering `play(replay = TRUE)`.
+2. **See answers:** When you’re not in the middle of the game, you can see all the answers for a pair of teams by entering `answers(“team1”, “team2”)`. (Example: `answers(“BOS”, “NYK”)`)
